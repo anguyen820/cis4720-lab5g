@@ -33,8 +33,6 @@
 -- every schema on this server. cis_students_db may or may not be listed.
 show databases;
 
-drop database if exists cis_students_db;
-
 -- make yours. IF NOT EXISTS means it is safe to run twice.
 create database if not exists cis_students_db;
 
@@ -300,14 +298,16 @@ SELECT * FROM students where student_id = 1;
 -- add a negative quiz5 score for inder and check his gpa.
 CALL add_score("quiz5", 4, -20);
 CALL list_students();
+-- inder's gpa dropped to 48.33, but negative scores should not be accepted.
 
 -- remove inder's negative quiz5 score and check his gpa.
 CALL remove_score(4, "quiz5");
 CALL list_students();
+-- inder's gpa returned to 82.50 after removing the negative score.
 
--- record attendance for a student that does not exist which is called a foreign key constraint.
+-- student 9 does not exist, so the foreign key constraint causes an error
+-- the procedure should show a clearer message instead
 CALL record_attendance(9, "present");
--- the procedure should display a clearer error message.
 
 -- =================================================================
 -- STEP 10. List every routine in your schema
@@ -318,6 +318,48 @@ SELECT ROUTINE_NAME, ROUTINE_TYPE
 FROM information_schema.ROUTINES
 WHERE ROUTINE_SCHEMA = 'cis_students_db'
 ORDER BY ROUTINE_NAME;
+
+-- =================================================================
+-- Count student test scores
+-- =================================================================
+
+-- check the test scores
+select * from test_scores;
+/*
+insert into test_Scores (student_id, test_name, score) values (3, "quiz4", 89);
+*/
+
+-- creates a procedure to count a student's test scores
+CREATE PROCEDURE student_count(IN p_student_id INT, OUT p_count INT)
+READS SQL DATA
+BEGIN
+
+-- counts the student's test scores and stores the total
+    SELECT COUNT(*) INTO p_count
+    FROM test_scores
+    WHERE student_id = p_student_id;
+
+    -- displays a message based on the number of tests
+    IF p_count = 0 THEN
+        SELECT CONCAT('No student with id ', p_student_id) AS message;
+    ELSEIF p_count > 3 then
+        SELECT CONCAT('This student with id ', p_student_id, ' has taken ', p_count, ' tests !') AS message;
+    ELSE
+        SELECT CONCAT('Student ', p_student_id, ' exists') AS message;
+    END IF;
+END
+
+-- count the tests for student 2
+CALL student_count(2, @n);
+
+-- display the number of tests for student 2
+select @n as student_count;
+
+-- count the tests for student 3
+call student_count(3, @n);
+
+-- display the number of tests for student 3
+select @n as student_count;
 
 -- =================================================================
 -- STEP 11 and 12. Push to GitHub and submit the URL
